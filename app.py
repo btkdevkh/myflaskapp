@@ -15,7 +15,6 @@ from functools import wraps
 
 app = Flask(__name__)
 
-
 # Connect to the database
 connection = pymysql.connect(
     host="localhost",
@@ -55,9 +54,8 @@ def articles():
             Articles = cursor.fetchall()
 
             return render_template("articles.html", articles=Articles)
-    finally:
-        # Close the connection
-        cursor.close()
+    except pymysql.Error as e:
+        print(f"Error connecting to MySQL: {e}")
 
 
 @app.route("/article/<string:id>")
@@ -105,9 +103,9 @@ def register():
                 flash("You are now registered and can log in", "success")
 
                 return redirect(url_for("index"))
-        finally:
-            # Close the connection
-            connection.close()
+
+        except pymysql.Error as e:
+            print(f"Error connecting to MySQL: {e}")
 
     return render_template("register.html", form=form)
 
@@ -143,9 +141,8 @@ def login():
                     error = "Username not found"
                     return render_template("login.html", error=error)
 
-        finally:
-            # Close the connection
-            connection.close()
+        except pymysql.Error as e:
+            print(f"Error connecting to MySQL: {e}")
 
     return render_template("login.html")
 

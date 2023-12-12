@@ -6,11 +6,22 @@
 
 <br />
 
-<h1>Articles</h1>
+<h1>Article</h1>
 
 <!-- Article -->
-<div>
-  <p>{{ id }}</p>
+<div class="card p-2">
+  <h3>{{ article.title }}</h3>
+  <p>{{ article.body }}</p>
+
+  <em>by {{ article.author }}</em>
+  <em>{{ article.create_date }}</em>
+</div>
+
+<br />
+
+<div class="d-flex justify-content-between">
+  <a class="btn btn-success" href="/articles">Back</a>
+  <a class="btn btn-warning" href="/update/{{ article.id }}">Edit</a>
 </div>
 
 {% endblock %}

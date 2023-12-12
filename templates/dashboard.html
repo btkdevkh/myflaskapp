@@ -3,11 +3,13 @@
 
 <!-- Block body -->
 {% block body %}
-<div class="mt-4 p-5">
+<div class="mt-4 p-5 text-center">
   <h3>
     Welcome to <span class="text-primary">Dashboard</span>, {{ session.username
     }}
   </h3>
+  <hr />
+  <a class="btn btn-success" href="/create">Add Article</a>
 </div>
 
 {% endblock %}

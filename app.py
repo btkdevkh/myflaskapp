@@ -15,6 +15,27 @@ from functools import wraps
 
 app = Flask(__name__)
 
+
+# Classes
+class RegisterForm(Form):
+    name = StringField("Name", [validators.Length(min=1, max=50)])
+    username = StringField("Username", [validators.Length(min=4, max=25)])
+    email = StringField("Email", [validators.Length(min=6, max=50)])
+    password = StringField(
+        "Password",
+        [
+            validators.DataRequired(),
+            validators.EqualTo("confirm", message="Password do not match"),
+        ],
+    )
+    confirm = PasswordField("Confirm Password")
+
+
+class CreateForm(Form):
+    title = StringField("Title", [validators.Length(min=1, max=50)])
+    body = TextAreaField("Description", [validators.Length(min=30)])
+
+
 # Connect to the database
 connection = pymysql.connect(
     host="localhost",
@@ -26,6 +47,7 @@ connection = pymysql.connect(
 )
 
 
+# Helpers
 def is_logged_in(f):
     @wraps(f)
     def wrap(*args, **kwargs):
@@ -58,28 +80,101 @@ def articles():
         print(f"Error connecting to MySQL: {e}")
 
 
+@app.route("/create", methods=["GET", "POST"])
+@is_logged_in
+def create():
+    form = CreateForm(request.form)
+
+    if request.method == "POST" and form.validate():
+        title = form.title.data
+        body = form.body.data
+
+        try:
+            # Articles
+            with connection.cursor() as cursor:
+                sql = "INSERT INTO `articles` (title, body, author) VALUES(%s, %s, %s)"
+                cursor.execute(sql, (title, body, session["username"]))
+
+                # Commit to DB
+                connection.commit()
+
+                flash("Article created", "success")
+
+                return redirect(url_for("articles"))
+
+        except pymysql.Error as e:
+            print(f"Error connecting to MySQL: {e}")
+
+    return render_template("create.html", form=form)
+
+
+@app.route("/update/<string:id>", methods=["GET", "POST"])
+@is_logged_in
+def update(id):
+    form = CreateForm(request.form)
+
+    try:
+        # Articles
+        with connection.cursor() as cursor:
+            sql = "SELECT * FROM articles WHERE id = %s"
+            result = cursor.execute(sql, (id))
+
+            if result > 0:
+                data = cursor.fetchone()
+
+                return render_template("update.html", form=form, article=data)
+            else:
+                error = "Article not found"
+                return render_template("update.html", error=error)
+
+    except pymysql.Error as e:
+        print(f"Error connecting to MySQL: {e}")
+
+    if request.method == "POST" and form.validate():
+        title = form.title.data
+        body = form.body.data
+
+        try:
+            # Update Article
+            with connection.cursor() as cursor:
+                sql = "UPDATE `articles` SET title = %s, body = %s, author = %s WHERE id = %s"
+                cursor.execute(sql, (title, body, session["username"], id))
+
+                # Commit to DB
+                connection.commit()
+
+                flash("Article edited", "success")
+
+                return redirect(url_for("articles"))
+
+        except pymysql.Error as e:
+            print(f"Error connecting to MySQL: {e}")
+    return render_template("update.html", form=form)
+
+
 @app.route("/article/<string:id>")
 def article(id):
-    return render_template("article.html", id=id)
+    try:
+        # Articles
+        with connection.cursor() as cursor:
+            sql = "SELECT * FROM articles WHERE id = %s"
+            result = cursor.execute(sql, (id))
+
+            if result > 0:
+                data = cursor.fetchone()
+                return render_template("article.html", article=data)
+
+            else:
+                error = "Username not found"
+                return render_template("login.html", error=error)
+
+    except pymysql.Error as e:
+        print(f"Error connecting to MySQL: {e}")
 
 
 @app.route("/about")
 def about():
     return render_template("about.html")
-
-
-class RegisterForm(Form):
-    name = StringField("Name", [validators.Length(min=1, max=50)])
-    username = StringField("Username", [validators.Length(min=4, max=25)])
-    email = StringField("Email", [validators.Length(min=6, max=50)])
-    password = StringField(
-        "Password",
-        [
-            validators.DataRequired(),
-            validators.EqualTo("confirm", message="Password do not match"),
-        ],
-    )
-    confirm = PasswordField("Confirm Password")
 
 
 @app.route("/register", methods=["GET", "POST"])

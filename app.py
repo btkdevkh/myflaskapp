@@ -32,8 +32,13 @@ class RegisterForm(Form):
 
 
 class CreateForm(Form):
-    title = StringField("Title", [validators.Length(min=1, max=50)])
+    title = StringField("Title", [validators.Length(min=1, max=30)])
     body = TextAreaField("Description", [validators.Length(min=30)])
+
+
+class ArticleForm(Form):
+    title = StringField("Title")
+    body = TextAreaField("Description")
 
 
 # Connect to the database
@@ -111,45 +116,34 @@ def create():
 @app.route("/update/<string:id>", methods=["GET", "POST"])
 @is_logged_in
 def update(id):
-    form = CreateForm(request.form)
+    form = ArticleForm(request.form)
 
     try:
         # Articles
         with connection.cursor() as cursor:
             sql = "SELECT * FROM articles WHERE id = %s"
-            result = cursor.execute(sql, (id))
+            cursor.execute(sql, (id))
+            data = cursor.fetchone()
 
-            if result > 0:
-                data = cursor.fetchone()
+            form.title.data = data["title"]
+            form.body.data = data["body"]
 
-                return render_template("update.html", form=form, article=data)
-            else:
-                error = "Article not found"
-                return render_template("update.html", error=error)
+            if request.method == "POST" and form.validate():
+                title = request.form["title"]
+                body = request.form["body"]
 
-    except pymysql.Error as e:
-        print(f"Error connecting to MySQL: {e}")
-
-    if request.method == "POST" and form.validate():
-        title = form.title.data
-        body = form.body.data
-
-        try:
-            # Update Article
-            with connection.cursor() as cursor:
-                sql = "UPDATE `articles` SET title = %s, body = %s, author = %s WHERE id = %s"
-                cursor.execute(sql, (title, body, session["username"], id))
+                sql = "UPDATE articles SET title = %s, body = %s WHERE id = %s"
+                cursor.execute(sql, (title, body, id))
 
                 # Commit to DB
                 connection.commit()
 
                 flash("Article edited", "success")
-
                 return redirect(url_for("articles"))
+            return render_template("update.html", form=form)
 
-        except pymysql.Error as e:
-            print(f"Error connecting to MySQL: {e}")
-    return render_template("update.html", form=form)
+    except pymysql.Error as e:
+        print(f"Error connecting to MySQL: {e}")
 
 
 @app.route("/article/<string:id>")
@@ -163,7 +157,6 @@ def article(id):
             if result > 0:
                 data = cursor.fetchone()
                 return render_template("article.html", article=data)
-
             else:
                 error = "Username not found"
                 return render_template("login.html", error=error)
